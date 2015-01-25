@@ -19,34 +19,74 @@ index=rep(1:nrow(yogurt),4)
 # ---------------------------
 
 pan<-yogurt[,grepl("Pan.I.D.",names(yogurt))]
-pan<-rep(pan,4)
-# Create log likelihood function to be minimized
+
+# Create log likelihood function to be maximized
 logLik <- function(param,Xf,Xp,Y) {  
-  m.1<-cbind(Xa, unlist(Xf, use.names=F), unlist(Xp, use.names=F)) #condense indep variables into one column
-  ev.1<-exp(m.1 %*% param.1)  
-  den.1<-tapply(ev.1,index,sum)
-  den.1<-rep(den.1,4)
-  p.1<-ev.1/den.1
-  pc.1<-p.1*unlist(Y,use.names=F);pc.1=tapply(pc.1,index,sum)
+  param.1<-param[1:5]; param.2<-param[6:10]; lambda<-param[11]
   
-  temp<-data.frame(cbind(pan,pc.1)) #create matrix so you can product over HH
-  ll.1<- temp %>%
-    group_by(pan) %>%
-    summarise(ll=prod(pc.1))
+  ll.n <- function(param,Xf,Xp,Y){
+    m<-cbind(Xa, unlist(Xf, use.names=F), unlist(Xp, use.names=F)) #condense indep variables into one column
+    ev<-exp(m %*% param)  #all 4 evs stacked on top of each other
+    den<-tapply(ev,index,sum) #sum where index is shared
+    den<-rep(den,4) 
+    p<-ev/den #4X the length with each p stacked on top of each other
+    pc<-p*unlist(Y,use.names=F) #still 4X the length
+    pc<-tapply(pc,index,sum) #no longer 4X
+    
+    temp<-data.frame(cbind(pan,pc)) #create matrix so you can product over HH
+    ll<- temp %>%
+      group_by(pan) %>%
+      summarise(ll=prod(pc))  
+    return(ll[,2]) #return segmented ll
+  }
   
-### stopped here
-  lpc<-log(pc)
-  ll<-sum(lpc) 
+  ll.1<- ll.n(param=param.1,Xf=Xf,Xp=Xp,Y=Y) 
+  ll.2<- ll.n(param=param.2,Xf=Xf,Xp=Xp,Y=Y)
+  pi<-exp(lambda)/(1+exp(lambda))
+  ll<-log(pi*ll.1+(1-pi)*ll.2)
+  ll<-sum(ll) 
   return(-ll)
 }
 
-param.1<-c(0,0,2,0.4,1); param.2<-param.1
+param=c(2,3,-0.5,1,-10,2,3,-0.5,1,-10,0.1)
 logLik(param,Xf,Xp,Y)
 
+fit_segment<-nlm(f = logLik,p=param,Xf=Xf, Xp=Xp,Y=Y)
 
+solution<-fit_segment$estimate
+names(solution) <- c("a11","a21","a31", "bf1","bp1",
+                  "a12","a22","a32", "bf2","bp2",
+                  "lambda")
+BIC_segment <- 2*fit_segment$minimum + length(param)*log(nrow(yogurt))
+
+# Calculate Brand Specific Elasticities 
+elasticity <-function(param,Xf,Xp){
+  param.1<-param[1:5]; param.2<-param[6:10]; lambda<-param[11]
+  
+  # This function is used often
+  pp.n <- function(param,Xf,Xp){ 
+    m<-cbind(Xa, unlist(Xf, use.names=F), unlist(Xp, use.names=F)) 
+    ev<-exp(m %*% param)  
+    den<-tapply(ev,index,sum) 
+    den<-rep(den,4) 
+    pp<-ev/den   
+    return(pp)
+  }
+  
+  #To Do: make this extensible to 2+ segments
+  pp.1<- pp.n(param=param.1,Xf=Xf,Xp=Xp) 
+  pp.2<- pp.n(param=param.2,Xf=Xf,Xp=Xp)
+  pi<-exp(lambda)/(1+exp(lambda))
+  ep<-pi*pp.1+(1-pi)*pp.2
+  el<- (param.1["bp1"]*pp.1*(1-pp.1)*pi + param.2["bp2"]*pp.2*(1-pp.2)*(1-pi))*Xp/ep
+  el<-colMeans(el)
+  return(el)
+}
+
+elasticity(param=solution, Xf=Xf, Xp=Xp)
 
 # ---------------------------
-# WEEK 2 PRODUCT CHARACTERISTICS With Lag 
+# WEEK 2 PRODUCT CHARACTERISTICS WITH LAG
 # ---------------------------
 
 # Create lagged values
