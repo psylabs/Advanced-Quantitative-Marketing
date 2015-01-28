@@ -68,12 +68,12 @@ solution <- fit_segment$estimate
 names(solution) <- c("a11","a21","a31", "bf1","bp1",
                   "a12","a22","a32", "bf2","bp2",
                   "lambda")
-BIC_segment <- 2*fit_segment$minimum + length(param)*log(nrow(yogurt))
+BIC_segment <- 2*fit_segment$minimum + length(params)*log(nrow(yogurt))
 
 # ----
 # Calculate Brand Specific Elasticities 
 # ----
-Elasticity <- function(param,Xf,Xp){
+Elasticity <- function(params,Xf,Xp){
   beta <- list()
   for (s in 1:segments) beta[[s]]<- params[((s-1)*coeffs+1):(s*coeffs)]
   
@@ -105,4 +105,4 @@ Elasticity <- function(param,Xf,Xp){
   return(es)
 }
 
-a<-Elasticity(param=solution, Xf=Xf, Xp=Xp)
+Elasticity(params=solution, Xf=Xf, Xp=Xp)
