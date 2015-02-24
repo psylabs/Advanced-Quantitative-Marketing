@@ -1,0 +1,34 @@
+# WEEK 5 Aggregate Logit (Coffee)
+========================================================
+---
+title: "Sample Document"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+```{r}
+COFFEE <- read.csv("CoffeeData.csv")
+
+m1   <- lm(log(Share/Outside) ~ 0+Brand.1+Brand.2+Brand.3+Brand.4+Price+Feature+Display+F.D, data=COFFEE)
+summary(m1); BIC (m1)
+
+m2   <- lm(Price ~ 0+Brand.1+Brand.2+Brand.3+Brand.4+Feature+Display+F.D + Spot.1+Spot.2+Spot.3+Spot.4+Spot.5+Spot.6, data=COFFEE)
+summary(m2)
+```
+
+Spot prices do a poor job in explaining the variance in price, p-values show that all but Spot.6 are poor predictors of Price
+
+```{r}
+m2.pred <- predict(m2)
+
+m3   <- lm(log(Share/Outside) ~ 0+Brand.1+Brand.2+Brand.3+Brand.4+m2.pred+Feature+Display+F.D, data=COFFEE)
+summary(m3); BIC (m3)
+```
+
+Using a 2 Stage Least Squares (Instrumental Variable) to predict market share, we find that the new model has a smaller BIC, indicating that the model is better.
+
+Now that we can make a causal inference assuming no price endogenity we see that the price elasticity \( \beta_p \) is more negative, indicating a stronger sensitivity to price.
+
+The 99% R^2 is suspicious.
