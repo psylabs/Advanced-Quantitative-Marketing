@@ -1,12 +1,5 @@
 # WEEK 5 Aggregate Logit (Coffee)
 ========================================================
----
-title: "Sample Document"
-output:
-  html_document:
-    toc: true
-    theme: united
----
 
 ```{r}
 COFFEE <- read.csv("CoffeeData.csv")
